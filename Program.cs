@@ -17,6 +17,17 @@ internal static class Program
         CultureInfo.DefaultThreadCurrentUICulture = applicationCulture;
 
         ApplicationConfiguration.Initialize();
-        Application.Run(new OllamaTrayApplicationContext());
+        try
+        {
+            Application.Run(new OllamaTrayApplicationContext());
+        }
+        catch (Exception exception)
+        {
+            MessageBox.Show(
+                LocalizedText.Format("ErrorApplicationStartup", exception.Message),
+                LocalizedText.Get("TrayTitle"),
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
     }
 }

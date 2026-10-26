@@ -4,12 +4,11 @@ namespace OllamaTray;
 
 internal sealed class OllamaTrayApplicationContext : ApplicationContext
 {
-    private const string ApiBaseUrl = "http://127.0.0.1:11434";
-
     private readonly NotifyIcon _trayIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _startItem;
     private readonly ToolStripMenuItem _stopItem;
+    private readonly ToolStripMenuItem _settingsItem;
     private readonly System.Windows.Forms.Timer _statusTimer;
     private readonly OllamaServerController _serverController = new();
     private readonly MemoryStream _stoppedIconStream;
@@ -36,6 +35,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         _statusItem.Click += CopyApiUrl;
         _startItem = new ToolStripMenuItem(LocalizedText.Get("MenuStart"), null, StartServer);
         _stopItem = new ToolStripMenuItem(LocalizedText.Get("MenuStop"), null, StopServer);
+        _settingsItem = new ToolStripMenuItem(LocalizedText.Get("MenuSettings"), null, OpenSettings);
         var openLogItem = new ToolStripMenuItem(LocalizedText.Get("MenuOpenLog"), null, OpenLog);
         var exitItem = new ToolStripMenuItem(LocalizedText.Get("MenuExit"), null, ExitApplication);
 
@@ -47,6 +47,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
             _startItem,
             _stopItem,
             new ToolStripSeparator(),
+            _settingsItem,
             openLogItem,
             exitItem
         ]);
@@ -168,17 +169,16 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
 
     private void UpdateStatus(bool isOnline)
     {
-        if (_isOnline == isOnline)
+        if (_isOnline != isOnline)
         {
-            return;
+            _isOnline = isOnline;
+            _trayIcon.Icon = _isOnline ? _runningIcon : _stoppedIcon;
         }
 
-        _isOnline = isOnline;
         _statusItem.Text = _isOnline
-            ? ApiBaseUrl
+            ? _serverController.ApiBaseUrl
             : LocalizedText.Get("StatusStopped");
         _statusItem.Enabled = _isOnline;
-        _trayIcon.Icon = _isOnline ? _runningIcon : _stoppedIcon;
     }
 
     private void CopyApiUrl(object? sender, EventArgs e)
@@ -190,7 +190,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
 
         try
         {
-            Clipboard.SetText(ApiBaseUrl);
+            Clipboard.SetText(_serverController.ApiBaseUrl);
         }
         catch (Exception exception)
         {
@@ -207,6 +207,23 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         catch (Exception exception)
         {
             ShowMessage(LocalizedText.Get("ErrorOpenLogTitle"), exception.Message);
+        }
+    }
+
+    private void OpenSettings(object? sender, EventArgs e)
+    {
+        try
+        {
+            using var settingsForm = new SettingsForm(_serverController.Settings);
+            if (settingsForm.ShowDialog() == DialogResult.OK)
+            {
+                _serverController.SaveSettings(settingsForm.Settings);
+                _ = RefreshStatusAsync();
+            }
+        }
+        catch (Exception exception)
+        {
+            ShowMessage(LocalizedText.Get("ErrorSettingsTitle"), exception.Message);
         }
     }
 

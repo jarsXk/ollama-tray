@@ -6,10 +6,6 @@ A simple Windows system tray application for managing the adjacent
 ## Requirements
 
 - Windows x64
-- .NET 10 Desktop Runtime (x64) to run the application:
-  [download the installer](https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe)
-  or choose another .NET 10 release from the
-  [official downloads page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
 - .NET 10 SDK for local builds
 - `ollama-vulkan\ollama.exe`
 
@@ -21,25 +17,26 @@ To run locally from this directory:
 dotnet run
 ```
 
-To publish a small, framework-dependent executable:
+To publish a self-contained executable:
 
 ```powershell
 dotnet publish OllamaTray.csproj `
   --configuration Release `
   --runtime win-x64 `
-  --self-contained false `
+  --self-contained true `
   -p:PublishSingleFile=true `
+  -p:IncludeNativeLibrariesForSelfExtract=true `
   --output publish
 ```
 
-The published application requires the .NET 10 Desktop Runtime (x64) to be
-installed on the target computer. It does not bundle the .NET runtime.
+The published application includes the .NET runtime and does not require a
+separate .NET installation on the target computer.
 
 ## GitHub Actions
 
 The workflow in `.github/workflows/build.yml` runs on pushes to `main`, on pull
-requests, and manually from the **Actions** tab. It builds a
-framework-dependent Windows x64 application with .NET 10 and uploads an
+requests, and manually from the **Actions** tab. It builds a self-contained
+Windows x64 application with .NET 10 and uploads an
 `ollama-tray-win-amd64` archive as a workflow artifact. The artifact is available
 for 14 days.
 
@@ -72,12 +69,13 @@ The application uses Russian when the Windows display language is Russian and
 English for all other Windows display languages. The language is selected at
 startup.
 
-- Checks the server status in the background every 30 seconds at
-  `http://127.0.0.1:11434/api/version`. The menu initially shows the server as
-  stopped and updates its status only when the state changes.
-- Shows `http://127.0.0.1:11434` as the status menu item while the server is
-  running; clicking it copies the API base URL to the clipboard. When stopped,
-  the item displays "Server stopped" and is disabled.
+- Checks the server status in the background every 30 seconds using the
+  configured `OLLAMA_HOST` (default `127.0.0.1:11434`) and the
+  `/api/version` endpoint. The menu initially shows the server as stopped and
+  updates its status only when the state changes.
+- Shows the configured API base URL as the status menu item while the server
+  is running; clicking it copies the URL to the clipboard. When stopped, the
+  item displays "Server stopped" and is disabled.
 - Starts `ollama.exe serve` directly as a hidden process. Before starting, it
   checks whether the server is already running. The executable is searched for
   in the adjacent `ollama-vulkan` folder, then in
@@ -85,17 +83,29 @@ startup.
   start `ollama.exe` through `PATH`. It sets `OLLAMA_MODELS` to
   `%USERPROFILE%\.ollama\models`, `OLLAMA_HOST` to `127.0.0.1:11434`,
   `OLLAMA_CONTEXT_LENGTH` to `8192`, and `OLLAMA_KEEP_ALIVE` to `5m`, matching
-  `start-ollama.cmd`. Standard output and errors are appended to
-  `logs\ollama.log` beside `ollama.exe`. The app waits up to 15 seconds for the
-  server to respond and reports an error if it does not.
-- Stops the `ollama.exe` process listening on port `11434`, including a server
-  started outside this application. This disconnects all clients using that
-  server. Before stopping, it checks whether the server is already stopped.
-- Opens the saved `logs\ollama.log` in the default Windows application for log
-  files. The log is created when the tray app starts Ollama; an error is shown
-  if no log file exists yet or Windows cannot open it.
+  `start-ollama.cmd`. These defaults can be edited in the
+  **Settings** menu and are saved per Windows user in
+  `%LOCALAPPDATA%\OllamaTray\settings.json`; changes apply the next time Ollama
+  is started. Standard output and errors are appended to
+  `<ollama.exe directory>\logs\ollama.log` (the `logs` subfolder next to
+  `ollama.exe`). The app waits up to 15 seconds for the server to respond and
+  reports an error if it does not.
+- Stops the `ollama.exe` process listening on the configured host port,
+  including a server started outside this application. This disconnects all
+  clients using that server. Before stopping, it checks whether the server is
+  already stopped.
+- Opens the saved `<ollama.exe directory>\logs\ollama.log` in the default
+  Windows application for log files. The log is created when the tray app
+  starts Ollama; an error is shown if no log file exists yet or Windows cannot
+  open it.
+- Opens settings for the Ollama model directory, host address, context length,
+  and keep-alive duration. Save applies the values to future server launches;
+  Cancel discards edits.
 - Exits the tray application without stopping Ollama.
 
 Stopping is forceful because Ollama does not provide a server shutdown API.
 This version does not integrate with the Ollama installer or configure
 automatic startup with Windows.
+
+The English setting labels follow the Ollama server configuration terminology
+in the [Ollama FAQ](https://docs.ollama.com/faq#how-do-i-configure-ollama-server).

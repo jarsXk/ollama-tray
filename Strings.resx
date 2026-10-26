@@ -24,6 +24,9 @@
   <data name="MenuOpenLog" xml:space="preserve">
     <value>Open Ollama log</value>
   </data>
+  <data name="MenuSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
   <data name="MenuExit" xml:space="preserve">
     <value>Exit</value>
   </data>
@@ -86,5 +89,59 @@
   </data>
   <data name="ErrorTcpTableChanged" xml:space="preserve">
     <value>The TCP table changed repeatedly; could not determine the server process.</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Ollama Settings</value>
+  </data>
+  <data name="SettingsModelsDirectory" xml:space="preserve">
+    <value>Models directory</value>
+  </data>
+  <data name="SettingsHost" xml:space="preserve">
+    <value>Host</value>
+  </data>
+  <data name="SettingsContextLength" xml:space="preserve">
+    <value>Context length</value>
+  </data>
+  <data name="SettingsKeepAlive" xml:space="preserve">
+    <value>Keep alive</value>
+  </data>
+  <data name="SettingsSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SettingsCancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="SettingsChangesApplyOnStart" xml:space="preserve">
+    <value>Changes apply the next time Ollama starts.</value>
+  </data>
+  <data name="ErrorSettingsTitle" xml:space="preserve">
+    <value>Could not save settings</value>
+  </data>
+  <data name="ErrorSettingsInvalid" xml:space="preserve">
+    <value>The settings file is invalid: {0}</value>
+  </data>
+  <data name="ErrorSettingsValuesInvalid" xml:space="preserve">
+    <value>One or more settings values are invalid.</value>
+  </data>
+  <data name="ErrorSettingsDirectory" xml:space="preserve">
+    <value>Could not determine the settings directory.</value>
+  </data>
+  <data name="ErrorApplicationStartup" xml:space="preserve">
+    <value>The application could not start: {0}</value>
+  </data>
+  <data name="ErrorModelsDirectoryRequired" xml:space="preserve">
+    <value>Models directory cannot be empty.</value>
+  </data>
+  <data name="ErrorHostRequired" xml:space="preserve">
+    <value>Host cannot be empty.</value>
+  </data>
+  <data name="ErrorHostInvalid" xml:space="preserve">
+    <value>Enter a valid host and optional port, for example 127.0.0.1:11434.</value>
+  </data>
+  <data name="ErrorContextLengthInvalid" xml:space="preserve">
+    <value>Context length must be a positive whole number.</value>
+  </data>
+  <data name="ErrorKeepAliveRequired" xml:space="preserve">
+    <value>Keep alive cannot be empty.</value>
   </data>
 </root>

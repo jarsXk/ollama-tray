@@ -24,6 +24,9 @@
   <data name="MenuOpenLog" xml:space="preserve">
     <value>Открыть лог Ollama</value>
   </data>
+  <data name="MenuSettings" xml:space="preserve">
+    <value>Настройки</value>
+  </data>
   <data name="MenuExit" xml:space="preserve">
     <value>Выход</value>
   </data>
@@ -86,5 +89,59 @@
   </data>
   <data name="ErrorTcpTableChanged" xml:space="preserve">
     <value>TCP-таблица часто менялась, поэтому не удалось определить процесс сервера.</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Настройки Ollama</value>
+  </data>
+  <data name="SettingsModelsDirectory" xml:space="preserve">
+    <value>Каталог моделей</value>
+  </data>
+  <data name="SettingsHost" xml:space="preserve">
+    <value>Адрес сервера</value>
+  </data>
+  <data name="SettingsContextLength" xml:space="preserve">
+    <value>Длина контекста</value>
+  </data>
+  <data name="SettingsKeepAlive" xml:space="preserve">
+    <value>Время хранения модели в памяти</value>
+  </data>
+  <data name="SettingsSave" xml:space="preserve">
+    <value>Сохранить</value>
+  </data>
+  <data name="SettingsCancel" xml:space="preserve">
+    <value>Отмена</value>
+  </data>
+  <data name="SettingsChangesApplyOnStart" xml:space="preserve">
+    <value>Изменения применятся при следующем запуске Ollama.</value>
+  </data>
+  <data name="ErrorSettingsTitle" xml:space="preserve">
+    <value>Не удалось сохранить настройки</value>
+  </data>
+  <data name="ErrorSettingsInvalid" xml:space="preserve">
+    <value>Файл настроек повреждён или имеет неверный формат: {0}</value>
+  </data>
+  <data name="ErrorSettingsValuesInvalid" xml:space="preserve">
+    <value>Одно или несколько значений настроек некорректны.</value>
+  </data>
+  <data name="ErrorSettingsDirectory" xml:space="preserve">
+    <value>Не удалось определить каталог для настроек.</value>
+  </data>
+  <data name="ErrorApplicationStartup" xml:space="preserve">
+    <value>Не удалось запустить приложение: {0}</value>
+  </data>
+  <data name="ErrorModelsDirectoryRequired" xml:space="preserve">
+    <value>Каталог моделей не может быть пустым.</value>
+  </data>
+  <data name="ErrorHostRequired" xml:space="preserve">
+    <value>Адрес сервера не может быть пустым.</value>
+  </data>
+  <data name="ErrorHostInvalid" xml:space="preserve">
+    <value>Введите корректный адрес и необязательный порт, например 127.0.0.1:11434.</value>
+  </data>
+  <data name="ErrorContextLengthInvalid" xml:space="preserve">
+    <value>Длина контекста должна быть положительным целым числом.</value>
+  </data>
+  <data name="ErrorKeepAliveRequired" xml:space="preserve">
+    <value>Время хранения модели в памяти не может быть пустым.</value>
   </data>
 </root>

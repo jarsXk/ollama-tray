@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -8,22 +9,38 @@ namespace OllamaTray;
 
 internal sealed class OllamaServerController : IDisposable
 {
-    private static readonly IPAddress OllamaAddress = IPAddress.Loopback;
     private static readonly IPAddress AnyAddress = IPAddress.Any;
     private const int OllamaPort = 11434;
+    private readonly OllamaSettingsStore _settingsStore = new();
+    private OllamaSettings _settings;
     private readonly HttpClient _httpClient = new()
     {
-        BaseAddress = new Uri($"http://{OllamaAddress}:{OllamaPort}/"),
         Timeout = TimeSpan.FromSeconds(2)
     };
 
+    public OllamaServerController()
+    {
+        _settings = _settingsStore.Load();
+    }
+
+    public OllamaSettings Settings => _settings.Copy();
+
+    public string ApiBaseUrl => GetApiBaseUri(_settings.Host).ToString().TrimEnd('/');
+
     public event Action<Exception>? LogWriteFailed;
+
+    public void SaveSettings(OllamaSettings settings)
+    {
+        _settingsStore.Save(settings);
+        _settings = settings.Copy();
+    }
 
     public async Task<bool> IsServerAvailableAsync()
     {
         try
         {
-            using var response = await _httpClient.GetAsync("api/version");
+            using var response = await _httpClient.GetAsync(
+                new Uri(GetApiBaseUri(_settings.Host), "api/version"));
             return response.IsSuccessStatusCode;
         }
         catch (HttpRequestException)
@@ -189,7 +206,7 @@ internal sealed class OllamaServerController : IDisposable
             LocalizedText.Format("ErrorServerStartTimeout", timeout.TotalSeconds));
     }
 
-    private static ProcessStartInfo CreateStartInfo(string executable)
+    private ProcessStartInfo CreateStartInfo(string executable)
     {
         var startInfo = new ProcessStartInfo
         {
@@ -204,13 +221,89 @@ internal sealed class OllamaServerController : IDisposable
 
         startInfo.WorkingDirectory = Path.GetDirectoryName(executable)!;
 
-        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
-        startInfo.Environment["OLLAMA_MODELS"] = Path.Combine(userProfile, ".ollama", "models");
-        startInfo.Environment["OLLAMA_HOST"] = "127.0.0.1:11434";
-        startInfo.Environment["OLLAMA_CONTEXT_LENGTH"] = "8192";
-        startInfo.Environment["OLLAMA_KEEP_ALIVE"] = "5m";
+        startInfo.Environment["OLLAMA_MODELS"] =
+            Environment.ExpandEnvironmentVariables(_settings.ModelsDirectory);
+        startInfo.Environment["OLLAMA_HOST"] = _settings.Host;
+        startInfo.Environment["OLLAMA_CONTEXT_LENGTH"] =
+            _settings.ContextLength.ToString(CultureInfo.InvariantCulture);
+        startInfo.Environment["OLLAMA_KEEP_ALIVE"] = _settings.KeepAlive;
 
         return startInfo;
+    }
+
+    public static bool TryCreateApiBaseUri(string host, out Uri? apiBaseUri)
+    {
+        apiBaseUri = null;
+        if (string.IsNullOrWhiteSpace(host))
+        {
+            return false;
+        }
+
+        var hostValue = host.Trim();
+        var portSeparator = hostValue.StartsWith("[", StringComparison.Ordinal)
+            ? hostValue.IndexOf("]:", StringComparison.Ordinal)
+            : hostValue.LastIndexOf(':');
+        var hasExplicitPort = portSeparator >= 0;
+        var portTextStart = portSeparator +
+            (hostValue.StartsWith("[", StringComparison.Ordinal) ? 2 : 1);
+        if (hasExplicitPort &&
+            (!int.TryParse(
+                hostValue.AsSpan(portTextStart),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out var explicitPort) ||
+             explicitPort is < 1 or > 65535))
+        {
+            return false;
+        }
+
+        if (!Uri.TryCreate($"http://{hostValue}", UriKind.Absolute, out var configuredUri) ||
+            configuredUri.UserInfo.Length != 0 ||
+            configuredUri.AbsolutePath != "/" ||
+            configuredUri.Query.Length != 0 ||
+            configuredUri.Fragment.Length != 0)
+        {
+            return false;
+        }
+
+        var hostname = configuredUri.Host;
+        var parsedAddressText = hostname.Trim('[', ']');
+        if (IPAddress.TryParse(parsedAddressText, out var configuredAddress) &&
+            configuredAddress.Equals(IPAddress.Any))
+        {
+            hostname = IPAddress.Loopback.ToString();
+        }
+        else if (IPAddress.TryParse(parsedAddressText, out configuredAddress) &&
+                 configuredAddress.Equals(IPAddress.IPv6Any))
+        {
+            hostname = IPAddress.IPv6Loopback.ToString();
+        }
+
+        var port = hasExplicitPort ? configuredUri.Port : OllamaPort;
+        if (port is < 1 or > 65535)
+        {
+            return false;
+        }
+
+        try
+        {
+            apiBaseUri = new UriBuilder(Uri.UriSchemeHttp, hostname, port).Uri;
+            return true;
+        }
+        catch (UriFormatException)
+        {
+            return false;
+        }
+    }
+
+    private static Uri GetApiBaseUri(string host)
+    {
+        if (TryCreateApiBaseUri(host, out var apiBaseUri))
+        {
+            return apiBaseUri!;
+        }
+
+        throw new InvalidDataException(LocalizedText.Get("ErrorHostInvalid"));
     }
 
     public void OpenLogFile()
@@ -237,10 +330,11 @@ internal sealed class OllamaServerController : IDisposable
 
     public void StopServer()
     {
+        var port = GetApiBaseUri(_settings.Host).Port;
         var processIds = WindowsTcpTable.GetListeningProcessIds(
-            OllamaPort,
-            OllamaAddress,
-            AnyAddress);
+            port,
+            AnyAddress,
+            IPAddress.IPv6Any);
         var ollamaProcesses = new List<Process>();
 
         foreach (var processId in processIds)
@@ -270,7 +364,7 @@ internal sealed class OllamaServerController : IDisposable
         if (ollamaProcesses.Count == 0)
         {
             throw new InvalidOperationException(
-                LocalizedText.Format("ErrorNoServerProcess", OllamaPort));
+                LocalizedText.Format("ErrorNoServerProcess", port));
         }
 
         foreach (var process in ollamaProcesses)

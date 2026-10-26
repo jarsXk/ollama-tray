@@ -7,41 +7,66 @@ namespace OllamaTray;
 internal static class WindowsTcpTable
 {
     private const int AddressFamilyIpv4 = 2;
+    private const int AddressFamilyIpv6 = 23;
     private const int TcpTableOwnerPidListener = 3;
     private const uint ErrorInsufficientBuffer = 122;
     private const int TcpStateListen = 2;
-    private const int TcpRowSize = 24;
+    private const int TcpRowIpv4Size = 24;
+    private const int TcpRowIpv6Size = 56;
     private const int MaximumBufferAttempts = 3;
 
     public static IReadOnlyList<int> GetListeningProcessIds(
         int port,
         params IPAddress[] localAddresses)
     {
-        var table = ReadTable();
+        var processIds = new HashSet<int>();
+        ReadListeningProcessIds(
+            AddressFamilyIpv4,
+            TcpRowIpv4Size,
+            port,
+            localAddresses,
+            processIds);
+        ReadListeningProcessIds(
+            AddressFamilyIpv6,
+            TcpRowIpv6Size,
+            port,
+            localAddresses,
+            processIds);
+        return processIds.ToArray();
+    }
+
+    private static void ReadListeningProcessIds(
+        int addressFamily,
+        int rowSize,
+        int port,
+        IPAddress[] localAddresses,
+        HashSet<int> processIds)
+    {
+        var table = ReadTable(addressFamily);
         try
         {
             var rowCount = Marshal.ReadInt32(table);
-            var processIds = new HashSet<int>();
-
             for (var index = 0; index < rowCount; index++)
             {
-                var row = IntPtr.Add(table, sizeof(int) + (index * TcpRowSize));
-                var state = Marshal.ReadInt32(row);
-                var localAddress = new IPAddress(BitConverter.GetBytes(Marshal.ReadInt32(row, 4)));
-                var localPortValue = unchecked((ushort)Marshal.ReadInt32(row, 8));
+                var row = IntPtr.Add(table, sizeof(int) + (index * rowSize));
+                var isIpv4 = addressFamily == AddressFamilyIpv4;
+                var localAddress = ReadLocalAddress(row, isIpv4);
+                var localPortOffset = isIpv4 ? 8 : 20;
+                var stateOffset = isIpv4 ? 0 : 48;
+                var processIdOffset = isIpv4 ? 20 : 52;
+                var state = Marshal.ReadInt32(row, stateOffset);
+                var localPortValue = unchecked((ushort)Marshal.ReadInt32(row, localPortOffset));
                 var localPort = unchecked((ushort)IPAddress.NetworkToHostOrder((short)localPortValue));
+                var wildcardAddress = isIpv4 ? IPAddress.Any : IPAddress.IPv6Any;
 
-                if (state != TcpStateListen ||
-                    localPort != port ||
-                    !localAddresses.Contains(localAddress))
+                if (state == TcpStateListen &&
+                    localPort == port &&
+                    (localAddresses.Contains(wildcardAddress) ||
+                     localAddresses.Contains(localAddress)))
                 {
-                    continue;
+                    processIds.Add(Marshal.ReadInt32(row, processIdOffset));
                 }
-
-                processIds.Add(Marshal.ReadInt32(row, 20));
             }
-
-            return processIds.ToArray();
         }
         finally
         {
@@ -49,14 +74,26 @@ internal static class WindowsTcpTable
         }
     }
 
-    private static IntPtr ReadTable()
+    private static IPAddress ReadLocalAddress(IntPtr row, bool isIpv4)
+    {
+        if (isIpv4)
+        {
+            return new IPAddress(BitConverter.GetBytes(Marshal.ReadInt32(row, 4)));
+        }
+
+        var bytes = new byte[16];
+        Marshal.Copy(row, bytes, 0, bytes.Length);
+        return new IPAddress(bytes);
+    }
+
+    private static IntPtr ReadTable(int addressFamily)
     {
         var bufferSize = 0;
         var result = GetExtendedTcpTable(
             IntPtr.Zero,
             ref bufferSize,
             true,
-            AddressFamilyIpv4,
+            addressFamily,
             TcpTableOwnerPidListener,
             0);
 
@@ -74,7 +111,7 @@ internal static class WindowsTcpTable
                 table,
                 ref bufferSize,
                 true,
-                AddressFamilyIpv4,
+                addressFamily,
                 TcpTableOwnerPidListener,
                 0);
 
