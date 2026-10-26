@@ -16,8 +16,8 @@ AppName=Ollama Tray
 AppVersion={#MyAppVersion}
 AppPublisher=jarsXk
 DefaultDirName={localappdata}\Programs\Ollama Tray
-# User settings are stored under %LOCALAPPDATA%\OllamaTray, outside {app}.
-# Do not add uninstall cleanup rules for that user-data directory.
+; User settings are stored under %LOCALAPPDATA%\OllamaTray, outside {app}.
+; Do not add uninstall cleanup rules for that user-data directory.
 DefaultGroupName=Ollama Tray
 DisableProgramGroupPage=no
 UsePreviousGroup=yes
