@@ -4,37 +4,40 @@ namespace OllamaTray;
 
 internal sealed class OllamaTrayApplicationContext : ApplicationContext
 {
+    private const string ApiBaseUrl = "http://127.0.0.1:11434";
+
     private readonly NotifyIcon _trayIcon;
     private readonly ToolStripMenuItem _statusItem;
     private readonly ToolStripMenuItem _startItem;
     private readonly ToolStripMenuItem _stopItem;
     private readonly System.Windows.Forms.Timer _statusTimer;
     private readonly OllamaServerController _serverController = new();
-    private readonly MemoryStream _iconStream;
-    private readonly Icon _applicationIcon;
+    private readonly MemoryStream _stoppedIconStream;
+    private readonly MemoryStream _runningIconStream;
+    private readonly Icon _stoppedIcon;
+    private readonly Icon _runningIcon;
     private bool _isChecking;
     private bool _isPerformingAction;
     private bool _isOnline;
 
     public OllamaTrayApplicationContext()
     {
-        using (var resource = typeof(Program).Assembly.GetManifestResourceStream(
-                   "OllamaTray.assets.ollama.ico")
-               ?? throw new InvalidOperationException("Не найден встроенный файл иконки Ollama."))
-        {
-            _iconStream = new MemoryStream();
-            resource.CopyTo(_iconStream);
-            _iconStream.Position = 0;
-            _applicationIcon = new Icon(_iconStream);
-        }
+        _stoppedIconStream = LoadEmbeddedIcon("OllamaTray.assets.ollama-stopped.ico");
+        _runningIconStream = LoadEmbeddedIcon("OllamaTray.assets.ollama-running.ico");
+        _stoppedIcon = new Icon(_stoppedIconStream);
+        _runningIcon = new Icon(_runningIconStream);
+        _serverController.LogWriteFailed += exception =>
+            ShowMessage(LocalizedText.Get("ErrorLogWriteTitle"), exception.Message);
 
-        _statusItem = new ToolStripMenuItem("Ollama: сервер не запущен")
+        _statusItem = new ToolStripMenuItem(LocalizedText.Get("StatusStopped"))
         {
             Enabled = false
         };
-        _startItem = new ToolStripMenuItem("Запустить Ollama", null, StartServer);
-        _stopItem = new ToolStripMenuItem("Остановить Ollama", null, StopServer);
-        var exitItem = new ToolStripMenuItem("Выход", null, ExitApplication);
+        _statusItem.Click += CopyApiUrl;
+        _startItem = new ToolStripMenuItem(LocalizedText.Get("MenuStart"), null, StartServer);
+        _stopItem = new ToolStripMenuItem(LocalizedText.Get("MenuStop"), null, StopServer);
+        var openLogItem = new ToolStripMenuItem(LocalizedText.Get("MenuOpenLog"), null, OpenLog);
+        var exitItem = new ToolStripMenuItem(LocalizedText.Get("MenuExit"), null, ExitApplication);
 
         var menu = new ContextMenuStrip();
         menu.Items.AddRange(
@@ -44,13 +47,14 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
             _startItem,
             _stopItem,
             new ToolStripSeparator(),
+            openLogItem,
             exitItem
         ]);
 
         _trayIcon = new NotifyIcon
         {
-            Icon = _applicationIcon,
-            Text = "Ollama Vulkan",
+            Icon = _stoppedIcon,
+            Text = LocalizedText.Get("TrayTitle"),
             ContextMenuStrip = menu,
             Visible = true
         };
@@ -70,8 +74,10 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
             _statusTimer.Dispose();
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
-            _applicationIcon.Dispose();
-            _iconStream.Dispose();
+            _stoppedIcon.Dispose();
+            _runningIcon.Dispose();
+            _stoppedIconStream.Dispose();
+            _runningIconStream.Dispose();
             _serverController.Dispose();
         }
 
@@ -93,7 +99,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         }
         catch (Exception exception)
         {
-            ShowMessage("Не удалось проверить Ollama", exception.Message);
+            ShowMessage(LocalizedText.Get("ErrorCheckTitle"), exception.Message);
         }
         finally
         {
@@ -104,7 +110,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     private async void StartServer(object? sender, EventArgs e)
     {
         await PerformServerActionAsync(
-            "Не удалось запустить Ollama",
+            LocalizedText.Get("ErrorStartTitle"),
             desiredState: true,
             action: _serverController.StartServerAsync);
     }
@@ -112,7 +118,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     private async void StopServer(object? sender, EventArgs e)
     {
         await PerformServerActionAsync(
-            "Не удалось остановить Ollama",
+            LocalizedText.Get("ErrorStopTitle"),
             desiredState: false,
             action: () =>
             {
@@ -169,8 +175,50 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
 
         _isOnline = isOnline;
         _statusItem.Text = _isOnline
-            ? "Ollama: сервер запущен"
-            : "Ollama: сервер не запущен";
+            ? ApiBaseUrl
+            : LocalizedText.Get("StatusStopped");
+        _statusItem.Enabled = _isOnline;
+        _trayIcon.Icon = _isOnline ? _runningIcon : _stoppedIcon;
+    }
+
+    private void CopyApiUrl(object? sender, EventArgs e)
+    {
+        if (!_isOnline)
+        {
+            return;
+        }
+
+        try
+        {
+            Clipboard.SetText(ApiBaseUrl);
+        }
+        catch (Exception exception)
+        {
+            ShowMessage(LocalizedText.Get("ErrorClipboardTitle"), exception.Message);
+        }
+    }
+
+    private void OpenLog(object? sender, EventArgs e)
+    {
+        try
+        {
+            _serverController.OpenLogFile();
+        }
+        catch (Exception exception)
+        {
+            ShowMessage(LocalizedText.Get("ErrorOpenLogTitle"), exception.Message);
+        }
+    }
+
+    private static MemoryStream LoadEmbeddedIcon(string resourceName)
+    {
+        using var resource = typeof(Program).Assembly.GetManifestResourceStream(resourceName)
+            ?? throw new InvalidOperationException(
+                LocalizedText.Format("ErrorIconMissing", resourceName));
+        var stream = new MemoryStream();
+        resource.CopyTo(stream);
+        stream.Position = 0;
+        return stream;
     }
 
     private void ShowMessage(string title, string message)

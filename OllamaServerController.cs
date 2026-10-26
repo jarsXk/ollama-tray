@@ -1,6 +1,8 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
 using System.Net.Http;
+using System.Text;
 
 namespace OllamaTray;
 
@@ -14,6 +16,8 @@ internal sealed class OllamaServerController : IDisposable
         BaseAddress = new Uri($"http://{OllamaAddress}:{OllamaPort}/"),
         Timeout = TimeSpan.FromSeconds(2)
     };
+
+    public event Action<Exception>? LogWriteFailed;
 
     public async Task<bool> IsServerAvailableAsync()
     {
@@ -34,13 +38,135 @@ internal sealed class OllamaServerController : IDisposable
 
     public async Task StartServerAsync()
     {
-        var startupScript = FindStartupScript();
-        var startInfo = startupScript is null
-            ? CreatePathStartupInfo()
-            : CreateStartupInfo(startupScript);
-        using var process = Process.Start(startInfo)
-            ?? throw new InvalidOperationException("Не удалось запустить процесс cmd.exe.");
+        var executable = FindOllamaExecutable();
+        var logDirectory = Path.Combine(Path.GetDirectoryName(executable)!, "logs");
+        Directory.CreateDirectory(logDirectory);
+        var logPath = Path.Combine(logDirectory, "ollama.log");
+        var logWriter = new StreamWriter(
+            new FileStream(logPath, FileMode.Append, FileAccess.Write, FileShare.ReadWrite),
+            new UTF8Encoding(encoderShouldEmitUTF8Identifier: false))
+        {
+            AutoFlush = true
+        };
+        var startInfo = CreateStartInfo(executable);
+        Process process;
+        try
+        {
+            process = Process.Start(startInfo)
+                ?? throw new InvalidOperationException(LocalizedText.Get("ErrorStartProcess"));
+        }
+        catch (Win32Exception exception)
+        {
+            logWriter.Dispose();
+            throw new InvalidOperationException(
+                LocalizedText.Format("ErrorStartExecutable", executable),
+                exception);
+        }
+        catch
+        {
+            logWriter.Dispose();
+            throw;
+        }
 
+        var startupCheckCompleted = new TaskCompletionSource(
+            TaskCreationOptions.RunContinuationsAsynchronously);
+        _ = LogProcessOutputAsync(
+            process,
+            logWriter,
+            SynchronizationContext.Current,
+            startupCheckCompleted.Task);
+        try
+        {
+            await WaitForServerAsync(process);
+        }
+        finally
+        {
+            startupCheckCompleted.SetResult();
+        }
+    }
+
+    private async Task LogProcessOutputAsync(
+        Process process,
+        StreamWriter logWriter,
+        SynchronizationContext? synchronizationContext,
+        Task startupCheckCompleted)
+    {
+        Exception? logError = null;
+        async Task CopyLinesAsync(StreamReader reader, string streamName)
+        {
+            while (await reader.ReadLineAsync() is { } line)
+            {
+                lock (logWriter)
+                {
+                    if (logError is null)
+                    {
+                        try
+                        {
+                            logWriter.WriteLine(
+                                $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] [{streamName}] {line}");
+                        }
+                        catch (IOException exception)
+                        {
+                            logError = exception;
+                        }
+                        catch (ObjectDisposedException exception)
+                        {
+                            logError = exception;
+                        }
+                    }
+                }
+            }
+        }
+
+        try
+        {
+            await Task.WhenAll(
+                CopyLinesAsync(process.StandardOutput, "stdout"),
+                CopyLinesAsync(process.StandardError, "stderr"));
+        }
+        catch (IOException exception)
+        {
+            logError ??= exception;
+        }
+        finally
+        {
+            try
+            {
+                logWriter.Dispose();
+            }
+            catch (IOException exception)
+            {
+                logError ??= exception;
+            }
+
+            if (logError is not null)
+            {
+                ReportLogWriteFailure(logError, synchronizationContext);
+            }
+
+            await startupCheckCompleted;
+            process.Dispose();
+        }
+    }
+
+    private void ReportLogWriteFailure(
+        Exception exception,
+        SynchronizationContext? synchronizationContext)
+    {
+        if (synchronizationContext is null)
+        {
+            LogWriteFailed?.Invoke(exception);
+        }
+        else
+        {
+            synchronizationContext.Post(
+                _ => LogWriteFailed?.Invoke(exception),
+                null);
+        }
+    }
+
+    private async Task WaitForServerAsync(Process process)
+    {
         var timeout = TimeSpan.FromSeconds(15);
         var startedAt = Stopwatch.StartNew();
         while (startedAt.Elapsed < timeout)
@@ -53,49 +179,60 @@ internal sealed class OllamaServerController : IDisposable
             if (process.HasExited)
             {
                 throw new InvalidOperationException(
-                    $"Команда запуска Ollama завершилась с кодом {process.ExitCode}. " +
-                    GetStartupLocationsMessage(startupScript));
+                    LocalizedText.Format("ErrorServerExited", process.ExitCode));
             }
 
             await Task.Delay(TimeSpan.FromMilliseconds(500));
         }
 
         throw new TimeoutException(
-            $"Ollama не ответила в течение {timeout.TotalSeconds:0} секунд. " +
-            GetStartupLocationsMessage(startupScript));
+            LocalizedText.Format("ErrorServerStartTimeout", timeout.TotalSeconds));
     }
 
-    private static ProcessStartInfo CreateStartupInfo(string startupScript)
+    private static ProcessStartInfo CreateStartInfo(string executable)
     {
-        return new ProcessStartInfo
+        var startInfo = new ProcessStartInfo
         {
-            FileName = "cmd.exe",
-            Arguments = $"/d /c \"\"{startupScript}\" /hidden\"",
-            WorkingDirectory = Path.GetDirectoryName(startupScript)!,
+            FileName = executable,
+            Arguments = "serve",
             CreateNoWindow = true,
-            UseShellExecute = false
+            UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden,
+            RedirectStandardOutput = true,
+            RedirectStandardError = true
         };
+
+        startInfo.WorkingDirectory = Path.GetDirectoryName(executable)!;
+
+        var userProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+        startInfo.Environment["OLLAMA_MODELS"] = Path.Combine(userProfile, ".ollama", "models");
+        startInfo.Environment["OLLAMA_HOST"] = "127.0.0.1:11434";
+        startInfo.Environment["OLLAMA_CONTEXT_LENGTH"] = "8192";
+        startInfo.Environment["OLLAMA_KEEP_ALIVE"] = "5m";
+
+        return startInfo;
     }
 
-    private static ProcessStartInfo CreatePathStartupInfo()
+    public void OpenLogFile()
     {
-        return new ProcessStartInfo
+        var executable = FindOllamaExecutable();
+        var logPath = Path.Combine(
+            Path.GetDirectoryName(executable)!,
+            "logs",
+            "ollama.log");
+
+        if (!File.Exists(logPath))
         {
-            FileName = "cmd.exe",
-            Arguments = "/d /c start-ollama.cmd /hidden",
-            CreateNoWindow = true,
-            UseShellExecute = false
-        };
-    }
+            throw new FileNotFoundException(
+                LocalizedText.Format("ErrorLogMissing", logPath),
+                logPath);
+        }
 
-    private static string GetStartupLocationsMessage(string? startupScript)
-    {
-        var checkedLocations = startupScript is null
-            ? "Проверены соседняя папка ollama-vulkan и стандартная папка установки " +
-              "%LOCALAPPDATA%\\Programs\\Ollama Vulkan; затем выполнена попытка запуска через PATH."
-            : $"Использовался скрипт \"{startupScript}\".";
-
-        return checkedLocations + " Проверьте наличие start-ollama.cmd и настройки PATH.";
+        using var viewer = Process.Start(new ProcessStartInfo
+        {
+            FileName = logPath,
+            UseShellExecute = true
+        }) ?? throw new InvalidOperationException(LocalizedText.Get("ErrorOpenLog"));
     }
 
     public void StopServer()
@@ -133,7 +270,7 @@ internal sealed class OllamaServerController : IDisposable
         if (ollamaProcesses.Count == 0)
         {
             throw new InvalidOperationException(
-                $"На порту {OllamaPort} не найден процесс ollama.exe. Сервер мог уже остановиться.");
+                LocalizedText.Format("ErrorNoServerProcess", OllamaPort));
         }
 
         foreach (var process in ollamaProcesses)
@@ -144,7 +281,7 @@ internal sealed class OllamaServerController : IDisposable
                 if (!process.WaitForExit(5000))
                 {
                     throw new TimeoutException(
-                        $"Процесс ollama.exe (PID {process.Id}) не завершился за 5 секунд.");
+                        LocalizedText.Format("ErrorProcessStopTimeout", process.Id));
                 }
             }
         }
@@ -155,7 +292,7 @@ internal sealed class OllamaServerController : IDisposable
         _httpClient.Dispose();
     }
 
-    private static string? FindStartupScript()
+    private static string FindOllamaExecutable()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
              directory is not null;
@@ -164,19 +301,38 @@ internal sealed class OllamaServerController : IDisposable
             var candidate = Path.Combine(
                 directory.FullName,
                 "ollama-vulkan",
-                "start-ollama.cmd");
+                "ollama.exe");
             if (File.Exists(candidate))
             {
                 return candidate;
             }
         }
 
-        var installedScript = Path.Combine(
+        var installedExecutable = Path.Combine(
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "Programs",
             "Ollama Vulkan",
-            "start-ollama.cmd");
+            "ollama.exe");
 
-        return File.Exists(installedScript) ? installedScript : null;
+        if (File.Exists(installedExecutable))
+        {
+            return installedExecutable;
+        }
+
+        var path = Environment.GetEnvironmentVariable("PATH");
+        if (path is not null)
+        {
+            foreach (var directory in path.Split(Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var normalizedDirectory = directory.Trim().Trim('"');
+                var candidate = Path.Combine(normalizedDirectory, "ollama.exe");
+                if (File.Exists(candidate))
+                {
+                    return candidate;
+                }
+            }
+        }
+
+        throw new FileNotFoundException(LocalizedText.Get("ErrorExecutableNotFound"));
     }
 }

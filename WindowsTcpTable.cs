@@ -62,7 +62,9 @@ internal static class WindowsTcpTable
 
         if (result != ErrorInsufficientBuffer)
         {
-            throw new Win32Exception((int)result, "Не удалось определить размер TCP-таблицы.");
+            throw new Win32Exception(
+                (int)result,
+                LocalizedText.Get("ErrorTcpTableSize"));
         }
 
         for (var attempt = 0; attempt < MaximumBufferAttempts; attempt++)
@@ -84,12 +86,14 @@ internal static class WindowsTcpTable
             Marshal.FreeHGlobal(table);
             if (result != ErrorInsufficientBuffer)
             {
-                throw new Win32Exception((int)result, "Не удалось прочитать TCP-таблицу.");
+                throw new Win32Exception(
+                    (int)result,
+                    LocalizedText.Get("ErrorTcpTableRead"));
             }
         }
 
         throw new InvalidOperationException(
-            "TCP-таблица часто менялась, поэтому не удалось определить процесс сервера.");
+            LocalizedText.Get("ErrorTcpTableChanged"));
     }
 
     [DllImport("iphlpapi.dll", SetLastError = true)]

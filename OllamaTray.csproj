@@ -5,9 +5,10 @@
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
-    <ApplicationIcon>assets\ollama.ico</ApplicationIcon>
+    <ApplicationIcon>assets\ollama-stopped.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="assets\ollama.ico" />
+    <EmbeddedResource Include="assets\ollama-stopped.ico" />
+    <EmbeddedResource Include="assets\ollama-running.ico" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=10.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="StatusStopped" xml:space="preserve">
+    <value>Server stopped</value>
+  </data>
+  <data name="MenuStart" xml:space="preserve">
+    <value>Start Ollama</value>
+  </data>
+  <data name="MenuStop" xml:space="preserve">
+    <value>Stop Ollama</value>
+  </data>
+  <data name="MenuOpenLog" xml:space="preserve">
+    <value>Open Ollama log</value>
+  </data>
+  <data name="MenuExit" xml:space="preserve">
+    <value>Exit</value>
+  </data>
+  <data name="TrayTitle" xml:space="preserve">
+    <value>Ollama Vulkan</value>
+  </data>
+  <data name="ErrorLogWriteTitle" xml:space="preserve">
+    <value>Could not write the Ollama log</value>
+  </data>
+  <data name="ErrorCheckTitle" xml:space="preserve">
+    <value>Could not check Ollama</value>
+  </data>
+  <data name="ErrorStartTitle" xml:space="preserve">
+    <value>Could not start Ollama</value>
+  </data>
+  <data name="ErrorStopTitle" xml:space="preserve">
+    <value>Could not stop Ollama</value>
+  </data>
+  <data name="ErrorClipboardTitle" xml:space="preserve">
+    <value>Could not copy the API URL</value>
+  </data>
+  <data name="ErrorOpenLogTitle" xml:space="preserve">
+    <value>Could not open the Ollama log</value>
+  </data>
+  <data name="ErrorIconMissing" xml:space="preserve">
+    <value>Embedded icon resource was not found: {0}</value>
+  </data>
+  <data name="ErrorStartProcess" xml:space="preserve">
+    <value>Windows could not start ollama.exe.</value>
+  </data>
+  <data name="ErrorStartExecutable" xml:space="preserve">
+    <value>Could not start ollama.exe at "{0}".</value>
+  </data>
+  <data name="ErrorServerExited" xml:space="preserve">
+    <value>ollama.exe exited with code {0} before the server started.</value>
+  </data>
+  <data name="ErrorServerStartTimeout" xml:space="preserve">
+    <value>Ollama did not respond within {0} seconds after starting ollama.exe.</value>
+  </data>
+  <data name="ErrorLogMissing" xml:space="preserve">
+    <value>The log file has not been created yet. It will appear after Ollama starts: {0}</value>
+  </data>
+  <data name="ErrorOpenLog" xml:space="preserve">
+    <value>Windows could not open the log file.</value>
+  </data>
+  <data name="ErrorNoServerProcess" xml:space="preserve">
+    <value>No ollama.exe process was found listening on port {0}. The server may already have stopped.</value>
+  </data>
+  <data name="ErrorProcessStopTimeout" xml:space="preserve">
+    <value>ollama.exe process (PID {0}) did not exit within 5 seconds.</value>
+  </data>
+  <data name="ErrorExecutableNotFound" xml:space="preserve">
+    <value>ollama.exe was not found in the adjacent ollama-vulkan folder, %LOCALAPPDATA%\Programs\Ollama Vulkan, or any PATH directory.</value>
+  </data>
+  <data name="ErrorTcpTableSize" xml:space="preserve">
+    <value>Could not determine the TCP table size.</value>
+  </data>
+  <data name="ErrorTcpTableRead" xml:space="preserve">
+    <value>Could not read the TCP table.</value>
+  </data>
+  <data name="ErrorTcpTableChanged" xml:space="preserve">
+    <value>The TCP table changed repeatedly; could not determine the server process.</value>
+  </data>
+</root>
