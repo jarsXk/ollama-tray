@@ -9,6 +9,8 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _startItem;
     private readonly ToolStripMenuItem _stopItem;
     private readonly ToolStripMenuItem _settingsItem;
+    private readonly ToolStripMenuItem _openLogItem;
+    private readonly ToolStripMenuItem _exitItem;
     private readonly System.Windows.Forms.Timer _statusTimer;
     private readonly OllamaServerController _serverController = new();
     private readonly MemoryStream _stoppedIconStream;
