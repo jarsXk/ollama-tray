@@ -64,7 +64,11 @@ kept in `assets`. The source is from
   stopped and updates its status only when the state changes.
 - Starts the server by running the existing `start-ollama.cmd /hidden` script,
   preserving its environment settings and log behavior. Before starting, it
-  checks whether the server is already running.
+  checks whether the server is already running. The script is searched for in
+  the adjacent `ollama-vulkan` folder, then in
+  `%LOCALAPPDATA%\Programs\Ollama Vulkan`; if it is not found, the app tries to
+  run `start-ollama.cmd` through `PATH`. The app waits up to 15 seconds for the
+  server to respond and reports an error if it does not.
 - Stops the `ollama.exe` process listening on port `11434`, including a server
   started outside this application. This disconnects all clients using that
   server. Before stopping, it checks whether the server is already stopped.

@@ -32,10 +32,42 @@ internal sealed class OllamaServerController : IDisposable
         }
     }
 
-    public void StartServer()
+    public async Task StartServerAsync()
     {
         var startupScript = FindStartupScript();
-        var startInfo = new ProcessStartInfo
+        var startInfo = startupScript is null
+            ? CreatePathStartupInfo()
+            : CreateStartupInfo(startupScript);
+        using var process = Process.Start(startInfo)
+            ?? throw new InvalidOperationException("Не удалось запустить процесс cmd.exe.");
+
+        var timeout = TimeSpan.FromSeconds(15);
+        var startedAt = Stopwatch.StartNew();
+        while (startedAt.Elapsed < timeout)
+        {
+            if (await IsServerAvailableAsync())
+            {
+                return;
+            }
+
+            if (process.HasExited)
+            {
+                throw new InvalidOperationException(
+                    $"Команда запуска Ollama завершилась с кодом {process.ExitCode}. " +
+                    GetStartupLocationsMessage(startupScript));
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(500));
+        }
+
+        throw new TimeoutException(
+            $"Ollama не ответила в течение {timeout.TotalSeconds:0} секунд. " +
+            GetStartupLocationsMessage(startupScript));
+    }
+
+    private static ProcessStartInfo CreateStartupInfo(string startupScript)
+    {
+        return new ProcessStartInfo
         {
             FileName = "cmd.exe",
             Arguments = $"/d /c \"\"{startupScript}\" /hidden\"",
@@ -43,11 +75,27 @@ internal sealed class OllamaServerController : IDisposable
             CreateNoWindow = true,
             UseShellExecute = false
         };
+    }
 
-        if (Process.Start(startInfo) is null)
+    private static ProcessStartInfo CreatePathStartupInfo()
+    {
+        return new ProcessStartInfo
         {
-            throw new InvalidOperationException("Не удалось запустить процесс cmd.exe.");
-        }
+            FileName = "cmd.exe",
+            Arguments = "/d /c start-ollama.cmd /hidden",
+            CreateNoWindow = true,
+            UseShellExecute = false
+        };
+    }
+
+    private static string GetStartupLocationsMessage(string? startupScript)
+    {
+        var checkedLocations = startupScript is null
+            ? "Проверены соседняя папка ollama-vulkan и стандартная папка установки " +
+              "%LOCALAPPDATA%\\Programs\\Ollama Vulkan; затем выполнена попытка запуска через PATH."
+            : $"Использовался скрипт \"{startupScript}\".";
+
+        return checkedLocations + " Проверьте наличие start-ollama.cmd и настройки PATH.";
     }
 
     public void StopServer()
@@ -107,7 +155,7 @@ internal sealed class OllamaServerController : IDisposable
         _httpClient.Dispose();
     }
 
-    private static string FindStartupScript()
+    private static string? FindStartupScript()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory);
              directory is not null;
@@ -123,8 +171,12 @@ internal sealed class OllamaServerController : IDisposable
             }
         }
 
-        throw new FileNotFoundException(
-            "Не найден ollama-vulkan\\start-ollama.cmd. " +
-            "Поместите приложение в подпапку рядом с каталогом ollama-vulkan.");
+        var installedScript = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
+            "Programs",
+            "Ollama Vulkan",
+            "start-ollama.cmd");
+
+        return File.Exists(installedScript) ? installedScript : null;
     }
 }

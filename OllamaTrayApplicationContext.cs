@@ -106,7 +106,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         await PerformServerActionAsync(
             "Не удалось запустить Ollama",
             desiredState: true,
-            action: _serverController.StartServer);
+            action: _serverController.StartServerAsync);
     }
 
     private async void StopServer(object? sender, EventArgs e)
@@ -114,13 +114,17 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         await PerformServerActionAsync(
             "Не удалось остановить Ollama",
             desiredState: false,
-            action: _serverController.StopServer);
+            action: () =>
+            {
+                _serverController.StopServer();
+                return Task.CompletedTask;
+            });
     }
 
     private async Task PerformServerActionAsync(
         string errorTitle,
         bool desiredState,
-        Action action)
+        Func<Task> action)
     {
         if (_isPerformingAction)
         {
@@ -136,7 +140,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
 
             if (isOnline != desiredState)
             {
-                action();
+                await action();
                 await CheckAndUpdateStatusAsync();
             }
         }
