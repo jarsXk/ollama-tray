@@ -22,7 +22,7 @@
     <value>Stop Ollama</value>
   </data>
   <data name="MenuOpenLog" xml:space="preserve">
-    <value>Open Ollama log</value>
+    <value>Logs</value>
   </data>
   <data name="MenuSettings" xml:space="preserve">
     <value>Settings</value>

@@ -22,7 +22,7 @@
     <value>Остановить Ollama</value>
   </data>
   <data name="MenuOpenLog" xml:space="preserve">
-    <value>Открыть лог Ollama</value>
+    <value>Логи</value>
   </data>
   <data name="MenuSettings" xml:space="preserve">
     <value>Настройки</value>
