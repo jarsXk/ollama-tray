@@ -26,7 +26,7 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore OllamaTray.csproj --runtime win-x64
 
-      - name: Publish self-contained Windows app
+      - name: Publish framework-dependent Windows app
         shell: pwsh
         env:
           PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
@@ -34,17 +34,16 @@ jobs:
           dotnet publish OllamaTray.csproj
           --configuration Release
           --runtime win-x64
-          --self-contained true
+          --self-contained false
           --no-restore
           -p:PublishSingleFile=true
-          -p:IncludeNativeLibrariesForSelfExtract=true
           --output "$env:PUBLISH_DIR"
 
       - name: Package published app
         shell: pwsh
         env:
           PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
-          ARCHIVE_PATH: ${{ runner.temp }}\ollama-tray-win-x64.zip
+          ARCHIVE_PATH: ${{ runner.temp }}\ollama-tray-win-amd64.zip
         run: |
           Compress-Archive `
             -Path "$env:PUBLISH_DIR\*" `
@@ -54,7 +53,7 @@ jobs:
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ollama-tray-win-x64
-          path: ${{ runner.temp }}/ollama-tray-win-x64.zip
+          name: ollama-tray-win-amd64
+          path: ${{ runner.temp }}/ollama-tray-win-amd64.zip
           if-no-files-found: error
           retention-days: 14

@@ -6,6 +6,10 @@ A simple Windows system tray application for managing the adjacent
 ## Requirements
 
 - Windows x64
+- .NET 10 Desktop Runtime (x64) to run the application:
+  [download the installer](https://aka.ms/dotnet/10.0/windowsdesktop-runtime-win-x64.exe)
+  or choose another .NET 10 release from the
+  [official downloads page](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
 - .NET 10 SDK for local builds
 - `ollama-vulkan\ollama.exe`
 
@@ -17,24 +21,26 @@ To run locally from this directory:
 dotnet run
 ```
 
-To publish a self-contained executable:
+To publish a small, framework-dependent executable:
 
 ```powershell
 dotnet publish OllamaTray.csproj `
   --configuration Release `
   --runtime win-x64 `
-  --self-contained true `
+  --self-contained false `
   -p:PublishSingleFile=true `
-  -p:IncludeNativeLibrariesForSelfExtract=true `
   --output publish
 ```
+
+The published application requires the .NET 10 Desktop Runtime (x64) to be
+installed on the target computer. It does not bundle the .NET runtime.
 
 ## GitHub Actions
 
 The workflow in `.github/workflows/build.yml` runs on pushes to `main`, on pull
 requests, and manually from the **Actions** tab. It builds a
-self-contained Windows x64 application with .NET 10 and uploads an
-`ollama-tray-win-x64` archive as a workflow artifact. The artifact is available
+framework-dependent Windows x64 application with .NET 10 and uploads an
+`ollama-tray-win-amd64` archive as a workflow artifact. The artifact is available
 for 14 days.
 
 The `ollama-tray` project must be hosted in a GitHub repository for the workflow
