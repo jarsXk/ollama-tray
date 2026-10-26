@@ -1,20 +1,31 @@
 name: Build Ollama Tray
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
   workflow_dispatch:
+    inputs:
+      version:
+        description: Application version (SemVer, for example 1.0.0)
+        required: true
+        type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
+      - name: Validate version
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $versionPattern = '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(\.(0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?(\+[0-9A-Za-z-]+(\.[0-9A-Za-z-]+)*)?$'
+          if ($env:VERSION -cnotmatch $versionPattern) {
+            throw "Version '$env:VERSION' is not valid SemVer. Enter a value such as 1.0.0 or 1.2.0-rc.1."
+          }
+
       - name: Check out source
         uses: actions/checkout@v4
 
@@ -29,6 +40,7 @@ jobs:
       - name: Publish self-contained Windows app
         shell: pwsh
         env:
+          VERSION: ${{ inputs.version }}
           PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
         run: >-
           dotnet publish OllamaTray.csproj
@@ -36,6 +48,7 @@ jobs:
           --runtime win-x64
           --self-contained true
           --no-restore
+          -p:Version="$env:VERSION"
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           --output "$env:PUBLISH_DIR"
@@ -44,17 +57,71 @@ jobs:
         shell: pwsh
         env:
           PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
-          ARCHIVE_PATH: ${{ runner.temp }}\ollama-tray-win-amd64.zip
+          VERSION: ${{ inputs.version }}
+          RUNNER_TEMP: ${{ runner.temp }}
         run: |
+          $archivePath = Join-Path $env:RUNNER_TEMP "ollama-tray-v$env:VERSION-win-amd64.zip"
           Compress-Archive `
             -Path "$env:PUBLISH_DIR\*" `
-            -DestinationPath $env:ARCHIVE_PATH `
+            -DestinationPath $archivePath `
             -CompressionLevel Optimal
 
-      - name: Upload build artifact
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup installation failed"
+          }
+
+      - name: Build Windows installer
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+          PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
+          INSTALLER_DIR: ${{ runner.temp }}\ollama-tray-installer
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (!(Test-Path $iscc)) {
+            $iscc = "$env:ProgramFiles\Inno Setup 6\ISCC.exe"
+          }
+          if (!(Test-Path $iscc)) {
+            throw "Inno Setup compiler not found"
+          }
+
+          New-Item -ItemType Directory -Force $env:INSTALLER_DIR | Out-Null
+          & $iscc `
+            "/DMyAppVersion=$env:VERSION" `
+            "/DPublishDir=$env:PUBLISH_DIR" `
+            "/DInstallerOutputDir=$env:INSTALLER_DIR" `
+            "installer\ollama-tray.iss"
+          if ($LASTEXITCODE -ne 0) {
+            throw "Inno Setup compilation failed with exit code $LASTEXITCODE"
+          }
+
+      - name: Create draft release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+          RUNNER_TEMP: ${{ runner.temp }}
+          INSTALLER_DIR: ${{ runner.temp }}\ollama-tray-installer
+          TARGET_SHA: ${{ github.sha }}
+        run: |
+          $archivePath = Join-Path $env:RUNNER_TEMP "ollama-tray-v$env:VERSION-win-amd64.zip"
+          $installerPath = Join-Path $env:INSTALLER_DIR "ollama-tray-v$env:VERSION-win-amd64-setup.exe"
+          gh release create "v$env:VERSION" $archivePath $installerPath `
+            --draft `
+            --title "Ollama Tray v$env:VERSION" `
+            --notes "Release v$env:VERSION" `
+            --target $env:TARGET_SHA
+
+      - name: Upload ZIP and installer
         uses: actions/upload-artifact@v4
         with:
-          name: ollama-tray-win-amd64
-          path: ${{ runner.temp }}/ollama-tray-win-amd64.zip
+          name: ollama-tray-v${{ inputs.version }}-win-amd64
+          path: |
+            ${{ runner.temp }}/ollama-tray-v${{ inputs.version }}-win-amd64.zip
+            ${{ runner.temp }}/ollama-tray-installer/ollama-tray-v${{ inputs.version }}-win-amd64-setup.exe
           if-no-files-found: error
           retention-days: 14

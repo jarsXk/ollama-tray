@@ -36,8 +36,8 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         _startItem = new ToolStripMenuItem(LocalizedText.Get("MenuStart"), null, StartServer);
         _stopItem = new ToolStripMenuItem(LocalizedText.Get("MenuStop"), null, StopServer);
         _settingsItem = new ToolStripMenuItem(LocalizedText.Get("MenuSettings"), null, OpenSettings);
-        var openLogItem = new ToolStripMenuItem(LocalizedText.Get("MenuOpenLog"), null, OpenLog);
-        var exitItem = new ToolStripMenuItem(LocalizedText.Get("MenuExit"), null, ExitApplication);
+        _openLogItem = new ToolStripMenuItem(LocalizedText.Get("MenuOpenLog"), null, OpenLog);
+        _exitItem = new ToolStripMenuItem(LocalizedText.Get("MenuExit"), null, ExitApplication);
 
         var menu = new ContextMenuStrip();
         menu.Items.AddRange(
@@ -48,8 +48,8 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
             _stopItem,
             new ToolStripSeparator(),
             _settingsItem,
-            openLogItem,
-            exitItem
+            _openLogItem,
+            _exitItem
         ]);
 
         _trayIcon = new NotifyIcon

@@ -5,9 +5,9 @@ A simple Windows system tray application for managing the adjacent
 
 ## Requirements
 
-- Windows x64
+- Windows 10/11 x64
+- Ollama
 - .NET 10 SDK for local builds
-- `ollama-vulkan\ollama.exe`
 
 ## Build and run
 
@@ -32,13 +32,13 @@ dotnet publish OllamaTray.csproj `
 The published application includes the .NET runtime and does not require a
 separate .NET installation on the target computer.
 
-## GitHub Actions
-
-The workflow in `.github/workflows/build.yml` runs on pushes to `main`, on pull
-requests, and manually from the **Actions** tab. It builds a self-contained
-Windows x64 application with .NET 10 and uploads an
-`ollama-tray-win-amd64` archive as a workflow artifact. The artifact is available
-for 14 days.
+The installer uses per-user installation and does not require administrator
+rights. It lets you choose the Start Menu folder for the Ollama Tray shortcut.
+Its optional, unchecked task downloads and silently installs the latest
+published Ollama Vulkan Windows amd64 release from GitHub; if that download or
+installation fails, Tray setup continues and shows a warning. A separate,
+unchecked task adds Ollama Tray to the current user's Windows startup. This
+starts the tray app only; it does not automatically start the Ollama server.
 
 The `ollama-tray` project must be hosted in a GitHub repository for the workflow
 to run. The repository root must contain `OllamaTray.csproj` and `.github`.
@@ -50,62 +50,14 @@ Place the published executable in a subfolder alongside the `ollama-vulkan`
 directory. The application searches parent directories for
 `ollama-vulkan\ollama.exe`.
 
-## Application icon
+## Settings
 
-The tray switches between multi-size icons derived from Ollama's official
-128x128 logo. The stopped and running icons are
-[`assets/ollama-stopped.ico`](assets/ollama-stopped.ico) and
-[`assets/ollama-running.ico`](assets/ollama-running.ico), with gray and green
-status badges respectively. An error-state icon is also prepared at
-[`assets/ollama-error.ico`](assets/ollama-error.ico), but is not currently used
-by the application. The logo sits on a white circle for visibility on dark
-Windows themes; the area outside it is transparent. The original PNG sources
-are in `assets`. The logo source is from
-[`ollama/ollama`](https://github.com/ollama/ollama/blob/main/docs/images/logo.png).
-
-## Tray menu
-
-The application uses Russian when the Windows display language is Russian and
-English for all other Windows display languages. The language is selected at
-startup.
-
-- Checks the server status in the background every 30 seconds using the
-  configured `OLLAMA_HOST` (default `127.0.0.1:11434`) and the
-  `/api/version` endpoint. The menu initially shows the server as stopped and
-  updates its status only when the state changes.
-- Shows the configured API base URL as the status menu item while the server
-  is running; clicking it copies the URL to the clipboard. When stopped, the
-  item displays "Server stopped" and is disabled.
-- Starts `ollama.exe serve` directly as a hidden process. Before starting, it
-  checks whether the server is already running. The executable is searched for
-  in the adjacent `ollama-vulkan` folder, then in
-  `%LOCALAPPDATA%\Programs\Ollama Vulkan`; if it is not found, the app tries to
-  start `ollama.exe` through `PATH`. It sets `OLLAMA_MODELS` to
-  `%USERPROFILE%\.ollama\models`, `OLLAMA_HOST` to `127.0.0.1:11434`,
-  `OLLAMA_CONTEXT_LENGTH` to `8192`, and `OLLAMA_KEEP_ALIVE` to `5m`, matching
-  `start-ollama.cmd`. These defaults can be edited in the
-  **Settings** menu and are saved per Windows user in
-  `%LOCALAPPDATA%\OllamaTray\settings.json`; changes apply the next time Ollama
-  is started. Standard output and errors are appended to
-  `<ollama.exe directory>\logs\ollama.log` (the `logs` subfolder next to
-  `ollama.exe`). The app waits up to 15 seconds for the server to respond and
-  reports an error if it does not.
-- Stops the `ollama.exe` process listening on the configured host port,
-  including a server started outside this application. This disconnects all
-  clients using that server. Before stopping, it checks whether the server is
-  already stopped.
-- Opens the saved `<ollama.exe directory>\logs\ollama.log` in the default
-  Windows application for log files. The log is created when the tray app
-  starts Ollama; an error is shown if no log file exists yet or Windows cannot
-  open it.
-- Opens settings for the Ollama model directory, host address, context length,
-  and keep-alive duration. Save applies the values to future server launches;
-  Cancel discards edits.
-- Exits the tray application without stopping Ollama.
-
-Stopping is forceful because Ollama does not provide a server shutdown API.
-This version does not integrate with the Ollama installer or configure
-automatic startup with Windows.
+The **Settings** window lets you edit the Ollama model directory, host address,
+context length, and keep-alive duration. Save stores the values per Windows user
+in `%LOCALAPPDATA%\OllamaTray\settings.json`; they apply the next time Ollama is
+started. Cancel discards edits. The settings file is outside the application
+installation directory, so uninstalling or reinstalling Ollama Tray does not
+remove or replace it. Only saving new values in the Settings window changes it.
 
 The English setting labels follow the Ollama server configuration terminology
 in the [Ollama FAQ](https://docs.ollama.com/faq#how-do-i-configure-ollama-server).
