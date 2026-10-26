@@ -10,13 +10,25 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _stopItem;
     private readonly System.Windows.Forms.Timer _statusTimer;
     private readonly OllamaServerController _serverController = new();
+    private readonly MemoryStream _iconStream;
+    private readonly Icon _applicationIcon;
     private bool _isChecking;
     private bool _isPerformingAction;
     private bool _isOnline;
 
     public OllamaTrayApplicationContext()
     {
-        _statusItem = new ToolStripMenuItem("Ollama: проверка статуса...")
+        using (var resource = typeof(Program).Assembly.GetManifestResourceStream(
+                   "OllamaTray.assets.ollama.ico")
+               ?? throw new InvalidOperationException("Не найден встроенный файл иконки Ollama."))
+        {
+            _iconStream = new MemoryStream();
+            resource.CopyTo(_iconStream);
+            _iconStream.Position = 0;
+            _applicationIcon = new Icon(_iconStream);
+        }
+
+        _statusItem = new ToolStripMenuItem("Ollama: сервер не запущен")
         {
             Enabled = false
         };
@@ -37,13 +49,13 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
 
         _trayIcon = new NotifyIcon
         {
-            Icon = SystemIcons.Application,
+            Icon = _applicationIcon,
             Text = "Ollama Vulkan",
             ContextMenuStrip = menu,
             Visible = true
         };
 
-        _statusTimer = new System.Windows.Forms.Timer { Interval = 3000 };
+        _statusTimer = new System.Windows.Forms.Timer { Interval = 30000 };
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
 
@@ -58,6 +70,8 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
             _statusTimer.Dispose();
             _trayIcon.Visible = false;
             _trayIcon.Dispose();
+            _applicationIcon.Dispose();
+            _iconStream.Dispose();
             _serverController.Dispose();
         }
 
@@ -72,26 +86,18 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         }
 
         _isChecking = true;
-        _statusItem.Text = "Ollama: проверка статуса...";
-        UpdateMenuItems();
 
         try
         {
-            _isOnline = await _serverController.IsServerAvailableAsync();
-            _statusItem.Text = _isOnline
-                ? "Ollama: сервер запущен"
-                : "Ollama: сервер не отвечает";
+            await CheckAndUpdateStatusAsync();
         }
         catch (Exception exception)
         {
-            _isOnline = false;
-            _statusItem.Text = "Ollama: ошибка проверки";
             ShowMessage("Не удалось проверить Ollama", exception.Message);
         }
         finally
         {
             _isChecking = false;
-            UpdateMenuItems();
         }
     }
 
@@ -99,17 +105,22 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     {
         await PerformServerActionAsync(
             "Не удалось запустить Ollama",
-            _serverController.StartServer);
+            desiredState: true,
+            action: _serverController.StartServer);
     }
 
     private async void StopServer(object? sender, EventArgs e)
     {
         await PerformServerActionAsync(
             "Не удалось остановить Ollama",
-            _serverController.StopServer);
+            desiredState: false,
+            action: _serverController.StopServer);
     }
 
-    private async Task PerformServerActionAsync(string errorTitle, Action action)
+    private async Task PerformServerActionAsync(
+        string errorTitle,
+        bool desiredState,
+        Action action)
     {
         if (_isPerformingAction)
         {
@@ -117,12 +128,17 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         }
 
         _isPerformingAction = true;
-        _statusItem.Text = "Ollama: выполняется команда...";
-        UpdateMenuItems();
 
         try
         {
-            action();
+            var isOnline = await _serverController.IsServerAvailableAsync();
+            UpdateStatus(isOnline);
+
+            if (isOnline != desiredState)
+            {
+                action();
+                await CheckAndUpdateStatusAsync();
+            }
         }
         catch (Exception exception)
         {
@@ -131,14 +147,26 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         finally
         {
             _isPerformingAction = false;
-            await RefreshStatusAsync();
         }
     }
 
-    private void UpdateMenuItems()
+    private async Task CheckAndUpdateStatusAsync()
     {
-        _startItem.Enabled = !_isOnline && !_isPerformingAction && !_isChecking;
-        _stopItem.Enabled = !_isPerformingAction && !_isChecking;
+        var isOnline = await _serverController.IsServerAvailableAsync();
+        UpdateStatus(isOnline);
+    }
+
+    private void UpdateStatus(bool isOnline)
+    {
+        if (_isOnline == isOnline)
+        {
+            return;
+        }
+
+        _isOnline = isOnline;
+        _statusItem.Text = _isOnline
+            ? "Ollama: сервер запущен"
+            : "Ollama: сервер не запущен";
     }
 
     private void ShowMessage(string title, string message)
