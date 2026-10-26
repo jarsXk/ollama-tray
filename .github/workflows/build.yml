@@ -1,0 +1,61 @@
+name: Build Ollama Tray
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Restore dependencies
+        run: dotnet restore OllamaTray.csproj --runtime win-x64
+
+      - name: Publish self-contained Windows app
+        shell: pwsh
+        env:
+          PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
+        run: >-
+          dotnet publish OllamaTray.csproj
+          --configuration Release
+          --runtime win-x64
+          --self-contained true
+          --no-restore
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          --output "$env:PUBLISH_DIR"
+
+      - name: Package published app
+        shell: pwsh
+        env:
+          PUBLISH_DIR: ${{ runner.temp }}\ollama-tray-publish
+          ARCHIVE_PATH: ${{ runner.temp }}\ollama-tray-win-x64.zip
+        run: |
+          Compress-Archive `
+            -Path "$env:PUBLISH_DIR\*" `
+            -DestinationPath $env:ARCHIVE_PATH `
+            -CompressionLevel Optimal
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ollama-tray-win-x64
+          path: ${{ runner.temp }}/ollama-tray-win-x64.zip
+          if-no-files-found: error
+          retention-days: 14
