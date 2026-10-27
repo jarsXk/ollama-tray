@@ -110,11 +110,15 @@ jobs:
         run: |
           $archivePath = Join-Path $env:RUNNER_TEMP "ollama-tray-v$env:VERSION-win-amd64.zip"
           $installerPath = Join-Path $env:INSTALLER_DIR "ollama-tray-v$env:VERSION-win-amd64-setup.exe"
-          gh release create "v$env:VERSION" $archivePath $installerPath `
+          $tag = "v$env:VERSION"
+          gh release create $tag $archivePath $installerPath `
             --draft `
             --title "Ollama Tray v$env:VERSION" `
             --notes "Release v$env:VERSION" `
             --target $env:TARGET_SHA
+          if ($LASTEXITCODE -ne 0) {
+            throw "Could not create the draft GitHub release."
+          }
 
       - name: Upload ZIP and installer
         uses: actions/upload-artifact@v4

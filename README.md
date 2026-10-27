@@ -39,6 +39,8 @@ published Ollama Vulkan Windows amd64 release from GitHub; if that download or
 installation fails, Tray setup continues and shows a warning. A separate,
 unchecked task adds Ollama Tray to the current user's Windows startup. This
 starts the tray app only; it does not automatically start the Ollama server.
+The final installer page offers a checked-by-default option to launch Ollama
+Tray immediately.
 
 The `ollama-tray` project must be hosted in a GitHub repository for the workflow
 to run. The repository root must contain `OllamaTray.csproj` and `.github`.

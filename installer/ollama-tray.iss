@@ -46,6 +46,8 @@ english.AddToStartupTask=Start Ollama Tray when I sign in to Windows
 russian.AddToStartupTask=Запускать Ollama Tray при входе в Windows
 english.DownloadingVulkan=Downloading and installing the latest Ollama Vulkan release...
 russian.DownloadingVulkan=Загрузка и установка последней версии Ollama Vulkan...
+english.LaunchTray=Launch Ollama Tray
+russian.LaunchTray=Запустить Ollama Tray
 
 [Tasks]
 Name: "installvulkan"; Description: "{cm:InstallLatestVulkanTask}"; GroupDescription: "{cm:AdditionalOptions}"; Flags: unchecked
@@ -61,6 +63,7 @@ Name: "{userstartup}\Ollama Tray"; Filename: "{app}\OllamaTray.exe"; WorkingDir:
 
 [Run]
 Filename: "powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{tmp}\install-latest-ollama-vulkan.ps1"""; StatusMsg: "{cm:DownloadingVulkan}"; Flags: waituntilterminated runhidden; Tasks: installvulkan
+Filename: "{app}\OllamaTray.exe"; Description: "{cm:LaunchTray}"; Flags: postinstall nowait skipifsilent
 
 [Code]
 function PrepareToInstall(var NeedsRestart: Boolean): String;
