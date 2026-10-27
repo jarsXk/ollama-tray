@@ -15,6 +15,7 @@ AppId={{A9B16403-2560-42D9-91DD-2979C20C2F66}
 AppName=Ollama Tray
 AppVersion={#MyAppVersion}
 AppPublisher=jarsXk
+SetupIconFile=..\assets\ollama.ico
 DefaultDirName={localappdata}\Programs\Ollama Tray
 ; User settings are stored under %LOCALAPPDATA%\OllamaTray, outside {app}.
 ; Do not add uninstall cleanup rules for that user-data directory.
