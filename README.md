@@ -3,6 +3,8 @@
 A simple Windows system tray application for managing the adjacent
 `ollama-vulkan` project.
 
+![preview](preview.png)
+
 ## Requirements
 
 - Windows 10/11 x64
