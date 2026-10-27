@@ -1,4 +1,5 @@
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace OllamaTray;
 
@@ -6,7 +7,8 @@ internal sealed class OllamaSettingsStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new()
     {
-        WriteIndented = true
+        WriteIndented = true,
+        Converters = { new JsonStringEnumConverter() }
     };
 
     private readonly string _settingsPath = Path.Combine(
@@ -60,7 +62,8 @@ internal sealed class OllamaSettingsStore
         if (string.IsNullOrWhiteSpace(settings.ModelsDirectory) ||
             !OllamaServerController.TryCreateApiBaseUri(settings.Host, out _) ||
             settings.ContextLength <= 0 ||
-            string.IsNullOrWhiteSpace(settings.KeepAlive))
+            string.IsNullOrWhiteSpace(settings.KeepAlive) ||
+            !Enum.IsDefined(settings.Language))
         {
             throw new InvalidDataException(
                 LocalizedText.Get("ErrorSettingsValuesInvalid"));

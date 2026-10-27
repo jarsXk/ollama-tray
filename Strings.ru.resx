@@ -96,6 +96,18 @@
   <data name="SettingsTitle" xml:space="preserve">
     <value>Настройки Ollama</value>
   </data>
+  <data name="SettingsLanguage" xml:space="preserve">
+    <value>Язык приложения</value>
+  </data>
+  <data name="LanguageSystem" xml:space="preserve">
+    <value>Системный язык</value>
+  </data>
+  <data name="LanguageEnglish" xml:space="preserve">
+    <value>Английский</value>
+  </data>
+  <data name="LanguageRussian" xml:space="preserve">
+    <value>Русский</value>
+  </data>
   <data name="SettingsModelsDirectory" xml:space="preserve">
     <value>Каталог моделей</value>
   </data>

@@ -1,5 +1,12 @@
 namespace OllamaTray;
 
+internal enum ApplicationLanguage
+{
+    System,
+    English,
+    Russian
+}
+
 internal sealed class OllamaSettings
 {
     public string ModelsDirectory { get; set; } = Path.Combine(
@@ -17,6 +24,8 @@ internal sealed class OllamaSettings
 
     public bool StopServerOnTrayExit { get; set; }
 
+    public ApplicationLanguage Language { get; set; } = ApplicationLanguage.System;
+
     public OllamaSettings Copy()
     {
         return new OllamaSettings
@@ -26,7 +35,8 @@ internal sealed class OllamaSettings
             ContextLength = ContextLength,
             KeepAlive = KeepAlive,
             StartServerOnTrayLaunch = StartServerOnTrayLaunch,
-            StopServerOnTrayExit = StopServerOnTrayExit
+            StopServerOnTrayExit = StopServerOnTrayExit,
+            Language = Language
         };
     }
 }

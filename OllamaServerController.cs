@@ -18,9 +18,9 @@ internal sealed class OllamaServerController : IDisposable
         Timeout = TimeSpan.FromSeconds(2)
     };
 
-    public OllamaServerController()
+    public OllamaServerController(OllamaSettings settings)
     {
-        _settings = _settingsStore.Load();
+        _settings = settings.Copy();
     }
 
     public OllamaSettings Settings => _settings.Copy();

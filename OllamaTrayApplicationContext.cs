@@ -12,7 +12,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     private readonly ToolStripMenuItem _openLogItem;
     private readonly ToolStripMenuItem _exitItem;
     private readonly System.Windows.Forms.Timer _statusTimer;
-    private readonly OllamaServerController _serverController = new();
+    private readonly OllamaServerController _serverController;
     private readonly MemoryStream _stoppedIconStream;
     private readonly MemoryStream _runningIconStream;
     private readonly Icon _stoppedIcon;
@@ -21,8 +21,9 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
     private bool _isPerformingAction;
     private bool _isOnline;
 
-    public OllamaTrayApplicationContext()
+    public OllamaTrayApplicationContext(OllamaSettings settings)
     {
+        _serverController = new OllamaServerController(settings);
         _stoppedIconStream = LoadEmbeddedIcon("OllamaTray.assets.ollama-stopped.ico");
         _runningIconStream = LoadEmbeddedIcon("OllamaTray.assets.ollama-running.ico");
         _stoppedIcon = new Icon(_stoppedIconStream);
@@ -235,6 +236,8 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
             if (settingsForm.ShowDialog() == DialogResult.OK)
             {
                 _serverController.SaveSettings(settingsForm.Settings);
+                LocalizedText.SetLanguage(settingsForm.Settings.Language);
+                UpdateLocalizedText();
                 _ = RefreshStatusAsync();
             }
         }
@@ -242,6 +245,17 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         {
             ShowMessage(LocalizedText.Get("ErrorSettingsTitle"), exception.Message);
         }
+    }
+
+    private void UpdateLocalizedText()
+    {
+        _startItem.Text = LocalizedText.Get("MenuStart");
+        _stopItem.Text = LocalizedText.Get("MenuStop");
+        _settingsItem.Text = LocalizedText.Get("MenuSettings");
+        _openLogItem.Text = LocalizedText.Get("MenuOpenLog");
+        _exitItem.Text = LocalizedText.Get("MenuExit");
+        _trayIcon.Text = LocalizedText.Get("TrayTitle");
+        UpdateStatus(_isOnline);
     }
 
     private static MemoryStream LoadEmbeddedIcon(string resourceName)

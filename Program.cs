@@ -1,5 +1,3 @@
-using System.Globalization;
-
 namespace OllamaTray;
 
 internal static class Program
@@ -7,19 +5,13 @@ internal static class Program
     [STAThread]
     private static void Main()
     {
-        var windowsCulture = CultureInfo.CurrentUICulture;
-        var applicationCulture = windowsCulture.TwoLetterISOLanguageName == "ru"
-            ? CultureInfo.GetCultureInfo("ru")
-            : CultureInfo.GetCultureInfo("en");
-        CultureInfo.CurrentCulture = applicationCulture;
-        CultureInfo.CurrentUICulture = applicationCulture;
-        CultureInfo.DefaultThreadCurrentCulture = applicationCulture;
-        CultureInfo.DefaultThreadCurrentUICulture = applicationCulture;
-
+        LocalizedText.SetLanguage(ApplicationLanguage.System);
         ApplicationConfiguration.Initialize();
         try
         {
-            Application.Run(new OllamaTrayApplicationContext());
+            var settings = new OllamaSettingsStore().Load();
+            LocalizedText.SetLanguage(settings.Language);
+            Application.Run(new OllamaTrayApplicationContext(settings));
         }
         catch (Exception exception)
         {
