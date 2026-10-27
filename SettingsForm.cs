@@ -8,6 +8,8 @@ internal sealed class SettingsForm : Form
     private readonly TextBox _hostTextBox = new();
     private readonly TextBox _contextLengthTextBox = new();
     private readonly TextBox _keepAliveTextBox = new();
+    private readonly CheckBox _startServerOnTrayLaunchCheckBox = new();
+    private readonly CheckBox _stopServerOnTrayExitCheckBox = new();
     private readonly Label _applyNoticeLabel = new();
     private readonly Label _validationLabel = new();
 
@@ -23,40 +25,44 @@ internal sealed class SettingsForm : Form
         MinimizeBox = false;
         ShowInTaskbar = false;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(620, 370);
+        ClientSize = new Size(640, 450);
 
         var layout = new TableLayoutPanel
         {
             Dock = DockStyle.Fill,
             Padding = new Padding(16),
             ColumnCount = 2,
-            RowCount = 8
+            RowCount = 10
         };
-        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 280));
+        layout.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 290));
         layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100));
-        for (var row = 0; row < 4; row++)
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 36));
+        for (var row = 2; row < 6; row++)
         {
             layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 56));
         }
         layout.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 24));
-        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 28));
+        layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 32));
         layout.RowStyles.Add(new RowStyle(SizeType.Absolute, 42));
 
-        AddSettingRow(layout, 0, "SettingsModelsDirectory", "OLLAMA_MODELS", _modelsDirectoryTextBox);
-        AddSettingRow(layout, 1, "SettingsHost", "OLLAMA_HOST", _hostTextBox);
-        AddSettingRow(layout, 2, "SettingsContextLength", "OLLAMA_CONTEXT_LENGTH", _contextLengthTextBox);
-        AddSettingRow(layout, 3, "SettingsKeepAlive", "OLLAMA_KEEP_ALIVE", _keepAliveTextBox);
+        AddOptionRow(layout, 0, "SettingsStartServerOnTrayLaunch", _startServerOnTrayLaunchCheckBox);
+        AddOptionRow(layout, 1, "SettingsStopServerOnTrayExit", _stopServerOnTrayExitCheckBox);
+        AddSettingRow(layout, 2, "SettingsModelsDirectory", "OLLAMA_MODELS", _modelsDirectoryTextBox);
+        AddSettingRow(layout, 3, "SettingsHost", "OLLAMA_HOST", _hostTextBox);
+        AddSettingRow(layout, 4, "SettingsContextLength", "OLLAMA_CONTEXT_LENGTH", _contextLengthTextBox);
+        AddSettingRow(layout, 5, "SettingsKeepAlive", "OLLAMA_KEEP_ALIVE", _keepAliveTextBox);
 
         _applyNoticeLabel.Text = LocalizedText.Get("SettingsChangesApplyOnStart");
         _applyNoticeLabel.Dock = DockStyle.Fill;
         _applyNoticeLabel.TextAlign = ContentAlignment.MiddleLeft;
-        layout.Controls.Add(_applyNoticeLabel, 0, 5);
+        layout.Controls.Add(_applyNoticeLabel, 0, 7);
         layout.SetColumnSpan(_applyNoticeLabel, 2);
 
         _validationLabel.Dock = DockStyle.Fill;
         _validationLabel.ForeColor = Color.Firebrick;
-        layout.Controls.Add(_validationLabel, 0, 6);
+        layout.Controls.Add(_validationLabel, 0, 8);
         layout.SetColumnSpan(_validationLabel, 2);
 
         var buttons = new FlowLayoutPanel
@@ -79,7 +85,7 @@ internal sealed class SettingsForm : Form
         };
         buttons.Controls.Add(saveButton);
         buttons.Controls.Add(cancelButton);
-        layout.Controls.Add(buttons, 0, 7);
+        layout.Controls.Add(buttons, 0, 9);
         layout.SetColumnSpan(buttons, 2);
 
         Controls.Add(layout);
@@ -90,6 +96,17 @@ internal sealed class SettingsForm : Form
         _hostTextBox.Text = Settings.Host;
         _contextLengthTextBox.Text = Settings.ContextLength.ToString(CultureInfo.InvariantCulture);
         _keepAliveTextBox.Text = Settings.KeepAlive;
+        _startServerOnTrayLaunchCheckBox.Checked = Settings.StartServerOnTrayLaunch;
+        _stopServerOnTrayExitCheckBox.Checked = Settings.StopServerOnTrayExit;
+    }
+
+    private static void AddOptionRow(TableLayoutPanel layout, int row, string labelResource, CheckBox checkBox)
+    {
+        checkBox.Text = LocalizedText.Get(labelResource);
+        checkBox.Dock = DockStyle.Fill;
+        checkBox.AutoSize = false;
+        layout.Controls.Add(checkBox, 0, row);
+        layout.SetColumnSpan(checkBox, 2);
     }
 
     private static void AddSettingRow(
@@ -161,7 +178,9 @@ internal sealed class SettingsForm : Form
             ModelsDirectory = _modelsDirectoryTextBox.Text.Trim(),
             Host = _hostTextBox.Text.Trim(),
             ContextLength = contextLength,
-            KeepAlive = _keepAliveTextBox.Text.Trim()
+            KeepAlive = _keepAliveTextBox.Text.Trim(),
+            StartServerOnTrayLaunch = _startServerOnTrayLaunchCheckBox.Checked,
+            StopServerOnTrayExit = _stopServerOnTrayExitCheckBox.Checked
         };
         DialogResult = DialogResult.OK;
         Close();

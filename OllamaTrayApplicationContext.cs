@@ -66,7 +66,7 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         _statusTimer.Tick += async (_, _) => await RefreshStatusAsync();
         _statusTimer.Start();
 
-        _ = RefreshStatusAsync();
+        _ = InitializeServerAsync();
     }
 
     protected override void Dispose(bool disposing)
@@ -85,6 +85,21 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         }
 
         base.Dispose(disposing);
+    }
+
+    private async Task InitializeServerAsync()
+    {
+        if (_serverController.Settings.StartServerOnTrayLaunch)
+        {
+            await PerformServerActionAsync(
+                LocalizedText.Get("ErrorStartTitle"),
+                desiredState: true,
+                action: _serverController.StartServerAsync);
+        }
+        else
+        {
+            await RefreshStatusAsync();
+        }
     }
 
     private async Task RefreshStatusAsync()
@@ -248,8 +263,37 @@ internal sealed class OllamaTrayApplicationContext : ApplicationContext
         _trayIcon.ShowBalloonTip(5000);
     }
 
-    private void ExitApplication(object? sender, EventArgs e)
+    private async void ExitApplication(object? sender, EventArgs e)
     {
+        if (_isPerformingAction)
+        {
+            return;
+        }
+
+        if (_serverController.Settings.StopServerOnTrayExit)
+        {
+            _isPerformingAction = true;
+            try
+            {
+                if (await _serverController.IsServerAvailableAsync())
+                {
+                    _serverController.StopServer();
+                }
+            }
+            catch (Exception exception)
+            {
+                MessageBox.Show(
+                    LocalizedText.Format("ErrorStopOnExit", exception.Message),
+                    LocalizedText.Get("ErrorStopTitle"),
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _isPerformingAction = false;
+            }
+        }
+
         ExitThread();
     }
 }

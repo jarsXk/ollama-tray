@@ -13,6 +13,10 @@ internal sealed class OllamaSettings
 
     public string KeepAlive { get; set; } = "5m";
 
+    public bool StartServerOnTrayLaunch { get; set; }
+
+    public bool StopServerOnTrayExit { get; set; }
+
     public OllamaSettings Copy()
     {
         return new OllamaSettings
@@ -20,7 +24,9 @@ internal sealed class OllamaSettings
             ModelsDirectory = ModelsDirectory,
             Host = Host,
             ContextLength = ContextLength,
-            KeepAlive = KeepAlive
+            KeepAlive = KeepAlive,
+            StartServerOnTrayLaunch = StartServerOnTrayLaunch,
+            StopServerOnTrayExit = StopServerOnTrayExit
         };
     }
 }

@@ -45,6 +45,9 @@
   <data name="ErrorStopTitle" xml:space="preserve">
     <value>Не удалось остановить Ollama</value>
   </data>
+  <data name="ErrorStopOnExit" xml:space="preserve">
+    <value>Не удалось остановить Ollama перед выходом из Ollama Tray: {0}</value>
+  </data>
   <data name="ErrorClipboardTitle" xml:space="preserve">
     <value>Не удалось скопировать API URL</value>
   </data>
@@ -112,7 +115,13 @@
     <value>Отмена</value>
   </data>
   <data name="SettingsChangesApplyOnStart" xml:space="preserve">
-    <value>Изменения применятся при следующем запуске Ollama.</value>
+    <value>Изменения переменных среды применятся при следующем запуске Ollama.</value>
+  </data>
+  <data name="SettingsStartServerOnTrayLaunch" xml:space="preserve">
+    <value>Запускать Ollama при запуске Ollama Tray</value>
+  </data>
+  <data name="SettingsStopServerOnTrayExit" xml:space="preserve">
+    <value>Останавливать Ollama при выходе из Ollama Tray</value>
   </data>
   <data name="ErrorSettingsTitle" xml:space="preserve">
     <value>Не удалось сохранить настройки</value>

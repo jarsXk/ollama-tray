@@ -41,4 +41,9 @@ directory. The application searches parent directories for
 The **Settings** window lets you edit the Ollama model directory, host address,
 context length, and keep-alive duration. Save stores the values per Windows user
 in `%LOCALAPPDATA%\OllamaTray\settings.json`; they apply the next time Ollama is
-started. 
+started.
+
+The settings also include optional checkboxes to start Ollama when Ollama Tray
+launches and to stop Ollama when Ollama Tray exits. Both are off by default.
+When enabled, Tray checks the configured server first, so it only starts or
+stops Ollama when a state change is needed.
